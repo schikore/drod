@@ -1,6 +1,6 @@
 # DROD 5
 # DROD RPG
-**(c) Caravel Games 2005-2020**
+**(c) Caravel Games 2005-2023**
 
 ----------------------------
 
@@ -32,6 +32,10 @@ When debugging build issues edit the build file from 'ninja -k 0' to 'ninja -k N
 >`scons audio=fmod arch=amd64`
 >
 >The dist option should be left at the default (none).
+
+It is possible to build DROD on a Raspberry Pi 4 (or probably 5), although this will require increasing the amount of swap space available for lower memory units (e.g. less than 4Gb). Failure to provide sufficient swap space will result in the Pi crashing. Increased swap space is not required to run DROD once built.
+
+To build, run `./ninjamaker -arch aarch64 -no-static` followed by `./build` in the `Master/Linux` directory. You will need to have built and installed Metakit before doing this, else it will fail when linking.
 
 
 ##### Mac builds
@@ -67,3 +71,10 @@ Music:
  - Modify the [Music] section of Data/drod.ini to apply your selection of music files.
  - To avoid running with any sound or music,
  - run the application with the "nosound" command line parameter.
+
+Fonts:
+ - The game engine supports TrueType fonts (.ttf files)
+ - Fonts can be placed in the Data/Fonts directory.
+ - Fonts for each game are initialized in `DRODFontManager.cpp`.
+ - DROD uses the Tom's New Roman and Epilog fonts, both created by Tom Murphy 7. These fonts can be obtain from http://fonts.tom7.com/.
+ - It is recommended to use the latest version of these fonts when developing, as older versions have visual problems when used with later versions of freetype.

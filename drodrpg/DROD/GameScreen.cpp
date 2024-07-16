@@ -532,7 +532,7 @@ void CGameScreen::RedrawStats(
 	WSTRING wstr;
 	for (i=0; i<numStats; ++i)
 	{
-		int val = 0;
+		int val = 0, val_percent = 0, val_mod = 0;
 		switch (i)
 		{
 			case 0: val = ps.HP; if (val < 0) val = 0; break;
@@ -552,11 +552,23 @@ void CGameScreen::RedrawStats(
 			case 14: val = ps.skeletonKeys >= MAX_KEY_DISPLAY ? MAX_KEY_DISPLAY : ps.skeletonKeys; break;
 			case 15: val = ps.XP; break;
 			case 16:
-				val = int(this->pCurrentGame->pLevel->dwMultiplier) * int(ps.itemMult) / 100;
+			{
+				val_percent = int(this->pCurrentGame->pLevel->dwMultiplier) * int(ps.itemMult);
+				val = val_percent / 100;
 				if (val > 99999)
 					val = 99999; //don't overwrite area
 				else if (val < -99999)
 					val = -99999;
+
+				//show two decimal places when values can fit
+				if (abs(val) < 1000) {
+					val_mod = abs(val_percent) % 100;
+
+					if (abs(val) >= 100) {
+						val_mod = (val_mod / 10) * 10; //truncate to one decimal digit
+					}
+				}
+			}
 			break;
 			default: break;
 		}
@@ -602,7 +614,22 @@ void CGameScreen::RedrawStats(
 			{
 				static const WCHAR multiplier[] = {We('x'),We(0)};
 				WSTRING text = multiplier;
-				text += _itoW(val, temp, 10);
+				if (val == 0 && val_percent < 0) {
+					text += wszHyphen; //minus sign
+					text += wszZero;
+				} else {
+					text += _itoW(val, temp, 10);
+				}
+				if (val_mod) {
+					text += wszPeriod;
+
+					if (val_mod < 10) {
+						text += wszZero; //leading zero
+					} else if (val_mod % 10 == 0) {
+						val_mod /= 10; //don't show trailing zero
+					}
+					text += _itoW(val_mod, temp, 10);
+				}
 				pLabel->SetText(text.c_str());
 			}
 			break;
@@ -3419,48 +3446,23 @@ void CGameScreen::ShowMonsterStats(CDbRoom *pRoom, CRoomWidget *pRoomWidget)
 	for (std::multimap<UINT, CCoord>::reverse_iterator riter=damageFromMonsters.rbegin();
 			riter!=damageFromMonsters.rend(); ++riter)
 	{
-		//Add monster 2x2 display on left side of dialog, like is done in sidebar monster stats.
 		CMonster *pMonster = pRoom->GetMonsterAtSquare(
 				riter->second.wX, riter->second.wY);
 		ASSERT(pMonster);
 		pMonster = pMonster->GetOwningMonster();
-
-		//Draw monster tiles at current text height.
-		CLabelWidget *pText = DYN_CAST(CLabelWidget*, CWidget*, pStatsDialog->GetWidget(TAG_BATTLETEXT));
-		UINT wTextWidth=0, wTextHeight=0;
-		if (!text.empty()) //determine text height
-			g_pTheFM->GetTextRectHeight(FONTLIB::F_Message,
-					text.c_str(), pText->GetW(), wTextWidth, wTextHeight);
-		float r, g, b;
-		pRoomWidget->TranslateMonsterColor(pMonster->getColor(), r, g, b);
-		UINT tileNo = TI_UNSPECIFIED;
-		for (UINT i=2*2; i--; )
-		{
-			const UINT x = i % 2;
-			const UINT y = i / 2;
-			const bool bCentered = (x==0 && tileNo == TI_UNSPECIFIED);
-			tileNo = GetMonsterDisplayTile(pMonster, x, y);
-			if (tileNo != TI_UNSPECIFIED)
-			{
-				const int xPixel = x * CDrodBitmapManager::CX_TILE +
-						(bCentered ? CDrodBitmapManager::CX_TILE/2 : 0);
-				pTilesWidget->AddTile(tileNo, xPixel,
-						wTextHeight + y * CDrodBitmapManager::CY_TILE, r, g, b);
-			}
-		}
-
-		if (count)
-			text += wszCRLF;
-		text += pRoomWidget->GetMonsterInfo(riter->second.wX, riter->second.wY, true);
+		bool success = AddMonsterStats(pRoom, pRoomWidget, pMonster, text);
 
 		//Show full page of monster stats.
-		if (++count >= MAX_DISPLAY_TYPES)
+		if (++count >= MAX_DISPLAY_TYPES || !success)
 		{
 			ShowBattleDialog(text.c_str());
 			text.resize(0);
 			count=0;
 			pTilesWidget->ClearTiles();
 			bDisplayedOnce = true;
+			if (!success) {
+				--riter;
+			}
 
 			pRoomWidget->DirtyRoom(); //temp room isn't auto-redrawn
 			pRoomWidget->Paint();
@@ -3477,6 +3479,65 @@ void CGameScreen::ShowMonsterStats(CDbRoom *pRoom, CRoomWidget *pRoomWidget)
 //
 //CGameScreen private methods.
 //
+
+//*****************************************************************************
+bool CGameScreen::AddMonsterStats(
+//Add the combat information for a given monster to a string, but only if the
+// resulting string fits within the allowed space.
+//
+//Params:
+	CDbRoom* pRoom, //current room
+	CRoomWidget* pRoomWidget, //the display widget for the room
+	CMonster* pMonster, //monster to display information for
+	WSTRING& text) //string to append to. may be non-empty.
+//
+//Returns: If the text was appended
+{
+	CDialogWidget* pStatsDialog = DYN_CAST(CDialogWidget*, CWidget*, GetWidget(TAG_BATTLEDIALOG));
+	CTilesWidget* pTilesWidget = DYN_CAST(CTilesWidget*, CWidget*, pStatsDialog->GetWidget(TAG_BATTLETILES));
+	CLabelWidget* pText = DYN_CAST(CLabelWidget*, CWidget*, pStatsDialog->GetWidget(TAG_BATTLETEXT));
+
+	WSTRING newText = pRoomWidget->GetMonsterInfo(pMonster->wX, pMonster->wY, true);
+	UINT wTextWidth = 0, wCurrentTextHeight = 0, wNewTextHeight = 0;
+
+	if (!text.empty()) //determine text height
+		g_pTheFM->GetTextRectHeight(FONTLIB::F_Message,
+			text.c_str(), pText->GetW(), wTextWidth, wCurrentTextHeight);
+
+	g_pTheFM->GetTextRectHeight(FONTLIB::F_Message,
+		newText.c_str(), pText->GetW(), wTextWidth, wNewTextHeight);
+
+	//If the resulting text will make the dialog to large, don't add it
+	if (wCurrentTextHeight + wNewTextHeight > CDrodBitmapManager::CY_ROOM - 60) {
+		return false;
+	}
+
+	//Add monster 2x2 display on left side of dialog, like is done in sidebar monster stats.
+	//Draw monster tiles at current text height.
+	float r, g, b;
+	pRoomWidget->TranslateMonsterColor(pMonster->getColor(), r, g, b);
+	UINT tileNo = TI_UNSPECIFIED;
+	for (UINT i = 2 * 2; i--; )
+	{
+		const UINT x = i % 2;
+		const UINT y = i / 2;
+		const bool bCentered = (x == 0 && tileNo == TI_UNSPECIFIED);
+		tileNo = GetMonsterDisplayTile(pMonster, x, y);
+		if (tileNo != TI_UNSPECIFIED)
+		{
+			const int xPixel = x * CDrodBitmapManager::CX_TILE +
+				(bCentered ? CDrodBitmapManager::CX_TILE / 2 : 0);
+			pTilesWidget->AddTile(tileNo, xPixel,
+				wCurrentTextHeight + y * CDrodBitmapManager::CY_TILE, r, g, b);
+		}
+	}
+
+	if (!text.empty())
+		text += wszCRLF;
+	text += newText;
+
+	return true;
+}
 
 //******************************************************************************
 UINT CGameScreen::MarkMapRoom(const UINT roomID)
@@ -7561,34 +7622,33 @@ void CGameScreen::ReattachRetainedSubtitles()
 //to be hooked back in to the entities they are tracking.
 {
 	ASSERT(this->pCurrentGame);
-	for (vector<ChannelInfo>::const_iterator channel=this->speechChannels.begin();
-			channel!=this->speechChannels.end(); ++channel)
+	for (vector<ChannelInfo>::iterator channel = this->speechChannels.begin();
+		channel != this->speechChannels.end(); ++channel)
 	{
-		CSubtitleEffect *pEffect = channel->pEffect;
+		CSubtitleEffect* pEffect = channel->pEffect;
 		if (pEffect)
 		{
 			//Find current instance of the entity this subtitle effect is following.
-			CCharacter *pCharacter = this->pCurrentGame->
-						GetCharacterWithScriptID(channel->scriptID);
-			ASSERT(pCharacter);
-			if (pCharacter) //robustness
+			CCharacter* pCharacter = this->pCurrentGame->pRoom->
+				GetCharacterWithScriptID(channel->scriptID);
+			if (pCharacter) //might be a script-generated NPC
 			{
-				CFiredCharacterCommand *pSpeechCommand = new CFiredCharacterCommand(pCharacter,
-						&(pCharacter->commands[channel->commandIndex]), channel->turnNo,
-						channel->scriptID, channel->commandIndex);
+				CFiredCharacterCommand* pSpeechCommand = new CFiredCharacterCommand(pCharacter,
+					&(pCharacter->commands[channel->commandIndex]), channel->turnNo,
+					channel->scriptID, channel->commandIndex);
 				pSpeechCommand->text = channel->text;
 				PrepCustomSpeaker(pSpeechCommand);
 				if (ProcessSpeechSpeaker(pSpeechCommand))
 				{
-					CEntity *pEntity = this->pCurrentGame->getSpeakingEntity(pSpeechCommand);
+					CEntity* pEntity = this->pCurrentGame->getSpeakingEntity(pSpeechCommand);
 					pEffect->FollowCoord(pEntity);
 					this->pRoomWidget->AddToSubtitles(pEffect);
 				} else {
-					delete pEffect;
+					channel->pEffect = NULL;
 				}
 				delete pSpeechCommand;
 			} else {
-				delete pEffect;
+				channel->pEffect = NULL;
 			}
 		}
 	}

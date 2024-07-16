@@ -713,8 +713,12 @@ bool CCharacter::ResetLevelExits()
 bool CCharacter::OnStabbed(CCueEvents &CueEvents, const UINT /*wX*/, const UINT /*wY*/, WeaponType weaponType)
 //Returns: whether character was killed
 {
+	const bool bIsPushableSafe = this->bPushableByWeapon
+		&& weaponType != WT_Firetrap
+		&& weaponType != WT_FloorSpikes
+		&& weaponType != WT_HotTile;
 	if (this->eImperative == ScriptFlag::Invulnerable || 
-			(this->bPushableByWeapon && weaponType != WT_Firetrap && weaponType != WT_FloorSpikes))
+			bIsPushableSafe)
 		return false;
 
 	CueEvents.Add(CID_MonsterDiedFromStab, this);
@@ -1366,7 +1370,10 @@ void CCharacter::Process(
 							if (!TurnsSlowly())
 								SetOrientation(dxFirst,dyFirst);
 						}
-						break;
+						//Allow if'd command to reach STOP_COMMAND
+						if (!this->bIfBlock) {
+							break;
+						}
 					}
 					STOP_COMMAND;
 				}
@@ -3122,6 +3129,8 @@ bool CCharacter::GetMovement(
 						dx, dy, true);
 			} else {
 				bStopTurn = true;
+				dxFirst = 0;
+				dyFirst = 0;
 			}
 		}
 		break;
@@ -4158,7 +4167,8 @@ const
 				if (room.GetOSquare(this->wX, this->wY) == T_PLATFORM_P)
 				{
 					const int nFirstO = nGetO((int)wCol - (int)this->wX, (int)wRow - (int)this->wY);
-					if (room.CanMovePlatform(this->wX, this->wY, nFirstO))
+					// @FIXME - nDist is a temporary fix to prevent hard crashes
+					if (nDist(wCol, wRow, this->wX, this->wY) == 1 && room.CanMovePlatform(this->wX, this->wY, nFirstO))
 						break;
 				}
 			return true;

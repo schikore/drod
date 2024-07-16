@@ -1553,6 +1553,14 @@ void CGameScreen::OnKeyDown(
 	}
 	if (nCommand != CMD_UNSPECIFIED)
 	{
+		//Sometimes, SDL will send the same input twice. If this happens for long waits, we don't
+		//want two of them to happen. Repeated inputs are counted, so for the first repeat, a
+		//duplicated command is not sent to the engine. This allows the player to chain long waits
+		//purposefully, but not accidentally.
+		if (nCommand == CMD_WAIT && bMacro && Key.repeat == 1) {
+			return;
+		}
+
 		//Hide mouse cursor while playing.
 		HideCursor();
 
@@ -6194,6 +6202,10 @@ void CGameScreen::UpdatePlayerFace()
 	}
 
 	SPEAKER player = getSpeakerType(MONSTERTYPE(dwCharID));
+	if (pPlayerHoldCharacter) {
+		player = getSpeakerType(MONSTERTYPE(pPlayerHoldCharacter->wType));
+	}
+
 	if (player == Speaker_None)
 	{
 		//If player is not in the room, show Beethro's face if NPC Beethro is in the room.

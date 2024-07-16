@@ -16,13 +16,13 @@ from pprint import pprint
 def overrideOptions():
 	global DevEnvPath,DepsToBuild,IgnoreBuilds
 
-	DevEnvPath = 'C:\\Program Files (x86)\\Microsoft Visual Studio 12.0\\Common7\\IDE\\devenv.com'
-	#DevEnvPath = 'C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\Community\\Common7\\IDE\\devenv.com'
+	#DevEnvPath = 'C:\\Program Files (x86)\\Microsoft Visual Studio 12.0\\Common7\\IDE\\devenv.com'
+	DevEnvPath = 'C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\Community\\Common7\\IDE\\devenv.com'
 	IgnoreBuilds = 0 # Set this to 0 to skip the build step
 	DepsToBuild = "all" # Change it to array of lib names to build and copy only the specific ones
 
 #### DEFAULT OPTIONS ####
-DevEnvPath = 'C:\\Program Files (x86)\\Microsoft Visual Studio 12.0\\Common7\\IDE\\devenv.com'
+DevEnvPath = 'C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\Community\\Common7\\IDE\\devenv.com'
 IgnoreBuilds = 0
 DepsToBuild = "all"
 
@@ -39,7 +39,7 @@ DependenciesLibraries = DependenciesDir + "Library\\"
 DependenciesDlls = DependenciesDir + "Dll\\"
 ZlibUrl = 'http://www.zlib.net/fossils/zlib-1.2.11.tar.gz'
 LibOggName = 'libogg-1.3.0'
-SdlName = 'sdl2-2.0.12'
+SdlName = 'sdl2-2.26.1'
 
 if DepsToBuild == "all":
 	DepsToBuild = [
@@ -54,7 +54,7 @@ if DepsToBuild == "all":
 		'lpng-1512',
 		'metakit-2.4.9.7',
 		SdlName,
-		'sdl-ttf-2.0.14',
+		'sdl-ttf-2.20.1',
 		'zlib'
 	]
 
@@ -310,33 +310,25 @@ dependencies = {
 		}
 	},
 	'metakit-2.4.9.7': {
-		'urls': ['https://github.com/jnorthrup/metakit/archive/master.zip'],
-		'builds': [
-			{
-				'sln': 'metakit-master/win/msvc70/mksrc.sln',
-				'configs': [
-					['Debug', '/project', 'mkbug.vcxproj', '/projectconfig', 'Debug'],
-					['Release', '/project', 'mkbug.vcxproj', '/projectconfig', 'Release']
-				]
-			}
-		],
+		'urls': ['https://github.com/CaravelGames/metakit/releases/download/2.4.9.7/caravel-metakit-2.4.9.7.zip'],
 		"include": {
-			"metakit-master/include/mk4.h": "",
-			"metakit-master/include/mk4dll.h": "",
-			"metakit-master/include/mk4io.h": "",
-			"metakit-master/include/mk4str.h": "",
-			"metakit-master/include/mk4.inl": ""
+			"caravel-metakit-2.4.9.7/include/mk4.h": "",
+			"caravel-metakit-2.4.9.7/include/mk4dll.h": "",
+			"caravel-metakit-2.4.9.7/include/mk4io.h": "",
+			"caravel-metakit-2.4.9.7/include/mk4str.h": "",
+			"caravel-metakit-2.4.9.7/include/mk4.inl": ""
 		},
 		'libs': {
-			'metakit-master/builds/mk4vc70s_d.lib': 'Debug',
-			'metakit-master/builds/mk4vc70s.lib': 'Release'
+			'caravel-metakit-2.4.9.7/libs/mk4vc70s_d.lib': 'Debug',
+			'caravel-metakit-2.4.9.7/libs/mk4vc70s.lib': 'Release'
+			'caravel-metakit-2.4.9.7/libs/mklib.pdb': ['Debug', 'Release']
 		}
 	},
 	SdlName: {
-		'urls': ['https://www.libsdl.org/release/SDL2-2.0.12.zip'],
+		'urls': ['https://github.com/libsdl-org/SDL/releases/download/release-2.26.1/SDL2-2.26.1.zip'],
 		'builds': [
 			{
-				'sln': 'sdl2-2.0.12/VisualC/SDL.sln',
+				'sln': 'sdl2-2.26.1/VisualC/SDL.sln',
 				'configs': [
 					['Debug', '/project', 'SDL2'],
 					['Release', '/project', 'SDL2'],
@@ -346,30 +338,29 @@ dependencies = {
 			}
 		],
 		'include': {
-			'SDL2-2.0.12/include': '' #Too many files to list them one by one
+			'SDL2-2.26.1/include': '' #Too many files to list them one by one
 		},
 		'libs': {
-			'SDL2-2.0.12/VisualC/Win32/Debug/SDL2.lib': 'Debug',
-			'SDL2-2.0.12/VisualC/Win32/Release/SDL2.lib': 'Release',
-			'SDL2-2.0.12/VisualC/Win32/Debug/SDL2main.lib': 'Debug',
-			'SDL2-2.0.12/VisualC/Win32/Release/SDL2main.lib': 'Release'
+			'SDL2-2.26.1/VisualC/Win32/Debug/SDL2.lib': 'Debug',
+			'SDL2-2.26.1/VisualC/Win32/Release/SDL2.lib': 'Release',
+			'SDL2-2.26.1/VisualC/Win32/Debug/SDL2main.lib': 'Debug',
+			'SDL2-2.26.1/VisualC/Win32/Release/SDL2main.lib': 'Release'
 		},
 		'dlls': {
-			'SDL2-2.0.12/VisualC/Win32/Debug/SDL2.dll': 'Debug',
-			'SDL2-2.0.12/VisualC/Win32/Release/SDL2.dll': 'Release'
+			'SDL2-2.26.1/VisualC/Win32/Debug/SDL2.dll': 'Debug',
+			'SDL2-2.26.1/VisualC/Win32/Release/SDL2.dll': 'Release'
 		}
 	},
-	'sdl-ttf-2.0.14': {
+	'sdl-ttf-2.20.1': {
 		'urls': ['https://www.libsdl.org/projects/SDL_ttf/release/SDL2_ttf-devel-2.0.14-VC.zip'],
 		'include': {
-			'SDL2_ttf-2.0.14/include': ''
+			'SDL2_ttf-2..20.1/include': ''
 		},
 		'libs': {
-			'SDL2_ttf-2.0.14/lib/x86/SDL2_ttf.lib': ['Debug', 'Release']
+			'SDL2_ttf-2.20.1/lib/x86/SDL2_ttf.lib': ['Debug', 'Release']
 		},
 		'dlls': {
-			'SDL2_ttf-2.0.14/lib/x86/SDL2_ttf.dll': ['Debug', 'Release'],
-			'SDL2_ttf-2.0.14/lib/x86/libfreetype-6.dll': ['Debug', 'Release']
+			'SDL2_ttf-2.20.1/lib/x86/SDL2_ttf.dll': ['Debug', 'Release']
 		}
 	},
 	'zlib': {
